@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Datapp\Router;
 
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\RequestHandlerInterface;
+use Datapp\Router\Dispatcher;
+use Datapp\Router\Route;
 use Psr\Http\Message\ResponseInterface;
-use Datapp\Router\DispatcherFactory;
+use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * @author Manuel Dimmler
@@ -13,47 +15,45 @@ use Datapp\Router\DispatcherFactory;
 class Router
 {
 
-    /** @var array */
-    private $routes = [];
+    /** @var array<string, array<Route>> */
+    private array $routes = [];
+    private Dispatcher $dispatcher;
 
-    /** @var DispatcherFactory */
-    private $dispatcherFactory;
-
-    /** @var RequestHandlerInterface */
-    private $notFoundHandler;
-
-    public function __construct(DispatcherFactory $dispatcherFactory, RequestHandlerInterface $notFoundHandler)
+    public function __construct(Dispatcher $dispatcher)
     {
-
-        $this->dispatcherFactory = $dispatcherFactory;
-        $this->notFoundHandler = $notFoundHandler;
+        $this->dispatcher = $dispatcher;
     }
 
     public function addRoute(Route $route): Route
     {
-        if (!array_key_exists($route->getMethod(), $this->routes)) {
-            $this->routes[$route->getMethod()] = [];
+        if (!array_key_exists($route->getMethod()->toString(), $this->routes)) {
+            $this->routes[$route->getMethod()->toString()] = [];
         }
-        $this->routes[$route->getMethod()][] = $route;
+        $this->routes[$route->getMethod()->toString()][] = $route;
         return $route;
     }
 
+    /**
+     * @param ServerRequestInterface $request
+     * @return ResponseInterface
+     * @throws RouteNotFoundException
+     */
     public function route(ServerRequestInterface $request): ResponseInterface
     {
         if (!array_key_exists($request->getMethod(), $this->routes)) {
-            return $this->dispatcherFactory->create($this->notFoundHandler)->handle($request);
+            throw new RouteNotFoundException();
         }
         $matches = [];
         /** @var Route $route */
         foreach ($this->routes[$request->getMethod()] as $route) {
-            if (preg_match($route->getRegex(), trim($request->getUri()->getPath(), '/'), $matches)) {
+            if (preg_match($route->getRegex()->toString(), trim($request->getUri()->getPath(), '/'), $matches)) {
                 $queryParams = array_merge($request->getQueryParams(), $matches);
-                return $this->dispatcherFactory
-                                ->create($route->getRequestHandler(), $route->getMiddlewares())
+                return $this->dispatcher
+                                ->withMiddlewares(...$route->getMiddlewares())
+                                ->withRequestHandler($route->getRequestHandler())
                                 ->handle($request->withQueryParams($queryParams));
             }
         }
-        return $this->dispatcherFactory->create($this->notFoundHandler)->handle($request);
+        throw new RouteNotFoundException();
     }
-
 }

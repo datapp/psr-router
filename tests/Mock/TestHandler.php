@@ -1,6 +1,6 @@
 <?php
 
-namespace Datapp\Router;
+namespace Datapp\Router\Mock;
 
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -8,7 +8,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 
-class NotFoundHandler implements RequestHandlerInterface
+class TestHandler implements RequestHandlerInterface
 {
 
     /** @var ResponseFactoryInterface */
@@ -25,9 +25,9 @@ class NotFoundHandler implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
+        $queryParams = $request->getQueryParams();
         return $this->responseFactory
-                        ->createResponse(404, 'Not Found')
-                        ->withBody($this->streamFactory->createStream('NOT FOUND'));
+                        ->createResponse()
+                        ->withBody($this->streamFactory->createStream('count: ' . $queryParams['count'] . PHP_EOL));
     }
-
 }
