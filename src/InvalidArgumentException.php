@@ -12,6 +12,7 @@ final class InvalidArgumentException extends \InvalidArgumentException
 
     const METHOD = 1;
     const REGEX = 2;
+    const MISSING_REQUEST_HANDLER = 3;
 
     public static function method(string $method): self
     {
@@ -21,5 +22,10 @@ final class InvalidArgumentException extends \InvalidArgumentException
     public static function regex(string $regex): self
     {
         return new self(sprintf('"%s" is not a valid regular expression', $regex), self::REGEX);
+    }
+
+    public static function missingRequestHandler(): self
+    {
+        return new self('request handler is missing', self::MISSING_REQUEST_HANDLER);
     }
 }

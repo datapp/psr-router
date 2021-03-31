@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Datapp\Router;
 
-use Psr\Http\Server\RequestHandlerInterface;
+use Datapp\Router\InvalidArgumentException;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * @author Manuel Dimmler
@@ -17,7 +18,7 @@ class Dispatcher implements RequestHandlerInterface
 
     /** @var array<MiddlewareInterface> */
     private array $middlewares = [];
-    private ?RequestHandlerInterface $handler = null;
+    private ?RequestHandlerInterface $requestHandler = null;
     private int $index = 0;
 
     public function withMiddlewares(MiddlewareInterface ...$middlewares): self
@@ -30,14 +31,22 @@ class Dispatcher implements RequestHandlerInterface
     public function withRequestHandler(RequestHandlerInterface $handler): self
     {
         $clone = clone $this;
-        $clone->handler = $handler;
+        $clone->requestHandler = $handler;
         return $clone;
     }
 
+    /**
+     * @param ServerRequestInterface $request
+     * @return ResponseInterface
+     * @throws InvalidArgumentException
+     */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
+        if ($this->requestHandler instanceof RequestHandlerInterface === false) {
+            throw InvalidArgumentException::missingRequestHandler();
+        }
         if (empty($this->middlewares[$this->index])) {
-            return $this->handler->handle($request);
+            return $this->requestHandler->handle($request);
         }
 
         return $this->middlewares[$this->index]->process($request, $this->nextHandler());
